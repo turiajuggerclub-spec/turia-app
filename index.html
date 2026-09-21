@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101010">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Turia Jugger">
+  <meta name="application-name" content="Turia Jugger">
+  <meta name="format-detection" content="telephone=no">
+  <title>Turia Jugger</title>
+
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+
+  <style>
+    :root {
+      --negro: #101010;
+      --dorado: #CFA866;
+      --blanco: #FFFFFF;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--negro);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    #appFrame {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #F3F3F3;
+      visibility: hidden;
+    }
+
+    #loader {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: grid;
+      place-items: center;
+      background: var(--negro);
+      color: var(--blanco);
+      text-align: center;
+      padding: 24px;
+    }
+
+    .loaderCard {
+      width: min(300px, 85vw);
+    }
+
+    .loaderCard img {
+      display: block;
+      width: 128px;
+      height: 128px;
+      margin: 0 auto 18px;
+      object-fit: contain;
+    }
+
+    .loaderTitle {
+      font-size: 21px;
+      font-weight: 800;
+      letter-spacing: 1.2px;
+    }
+
+    .loaderSub {
+      margin-top: 6px;
+      color: var(--dorado);
+      font-size: 13px;
+    }
+
+    .spinner {
+      width: 34px;
+      height: 34px;
+      margin: 22px auto 0;
+      border: 3px solid rgba(255,255,255,.2);
+      border-top-color: var(--dorado);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #installCard {
+      position: fixed;
+      z-index: 40;
+      left: max(12px, env(safe-area-inset-left));
+      right: max(12px, env(safe-area-inset-right));
+      bottom: max(12px, env(safe-area-inset-bottom));
+      display: none;
+      align-items: center;
+      gap: 12px;
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 12px;
+      border-radius: 14px;
+      background: rgba(16,16,16,.96);
+      color: white;
+      box-shadow: 0 8px 30px rgba(0,0,0,.3);
+    }
+
+    #installCard img {
+      width: 42px;
+      height: 42px;
+      flex: 0 0 auto;
+    }
+
+    .installText {
+      min-width: 0;
+      flex: 1;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .installText strong {
+      display: block;
+      margin-bottom: 2px;
+      font-size: 13px;
+    }
+
+    .installButton {
+      border: 0;
+      border-radius: 9px;
+      padding: 10px 12px;
+      background: var(--dorado);
+      color: var(--negro);
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .dismissButton {
+      border: 0;
+      background: transparent;
+      color: #BBB;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 2px 5px;
+    }
+
+    #errorCard {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: none;
+      place-items: center;
+      padding: 24px;
+      background: var(--negro);
+      color: white;
+      text-align: center;
+    }
+
+    #errorCard > div {
+      max-width: 380px;
+    }
+
+    #errorCard img {
+      width: 100px;
+      height: 100px;
+      margin-bottom: 16px;
+    }
+
+    #openDirect {
+      display: inline-block;
+      margin-top: 14px;
+      padding: 11px 15px;
+      border-radius: 9px;
+      background: var(--dorado);
+      color: var(--negro);
+      font-weight: 800;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="loader">
+    <div class="loaderCard">
+      <img src="logo.svg" alt="Turia Jugger Club">
+      <div class="loaderTitle">TURIA JUGGER CLUB</div>
+      <div class="loaderSub">CIRCUITO 26/27</div>
+      <div class="spinner" aria-hidden="true"></div>
+    </div>
+  </div>
+
+  <iframe
+    id="appFrame"
+    title="Turia Jugger Club"
+    allow="geolocation 'none'; camera 'none'; microphone 'none'"
+    referrerpolicy="strict-origin-when-cross-origin"
+  ></iframe>
+
+  <div id="installCard">
+    <img src="icons/icon-192.png" alt="">
+    <div class="installText">
+      <strong>Instalar Turia Jugger</strong>
+      <span id="installHelp">Añádela a tu pantalla de inicio.</span>
+    </div>
+    <button id="installButton" class="installButton" type="button">Instalar</button>
+    <button id="dismissInstall" class="dismissButton" type="button" aria-label="Cerrar">×</button>
+  </div>
+
+  <div id="errorCard">
+    <div>
+      <img src="icons/icon-192.png" alt="">
+      <h2>No se ha podido cargar la app</h2>
+      <p>Comprueba que tienes conexión. Si el problema continúa, abre la aplicación directamente.</p>
+      <a id="openDirect" href="#" target="_blank" rel="noopener">Abrir directamente</a>
+    </div>
+  </div>
+
+  <script src="app-config.js"></script>
+  <script>
+    const frame = document.getElementById('appFrame');
+    const loader = document.getElementById('loader');
+    const errorCard = document.getElementById('errorCard');
+    const openDirect = document.getElementById('openDirect');
+    const installCard = document.getElementById('installCard');
+    const installButton = document.getElementById('installButton');
+    const installHelp = document.getElementById('installHelp');
+    const dismissInstall = document.getElementById('dismissInstall');
+
+    const appUrl = window.TURIA_APP_URL;
+    let deferredPrompt = null;
+    let loaded = false;
+
+    function isStandalone() {
+      return window.matchMedia('(display-mode: standalone)').matches ||
+        window.navigator.standalone === true;
+    }
+
+    function isIOS() {
+      return /iphone|ipad|ipod/i.test(navigator.userAgent);
+    }
+
+    if (!appUrl || !/^https:\/\//i.test(appUrl)) {
+      errorCard.style.display = 'grid';
+      loader.style.display = 'none';
+    } else {
+      openDirect.href = appUrl;
+      frame.src = appUrl;
+    }
+
+    frame.addEventListener('load', () => {
+      loaded = true;
+      frame.style.visibility = 'visible';
+      loader.style.display = 'none';
+    });
+
+    setTimeout(() => {
+      if (!loaded) {
+        loader.style.display = 'none';
+        errorCard.style.display = 'grid';
+      }
+    }, 15000);
+
+    window.addEventListener('online', () => {
+      if (!loaded && appUrl) {
+        errorCard.style.display = 'none';
+        loader.style.display = 'grid';
+        frame.src = appUrl;
+      }
+    });
+
+    window.addEventListener('beforeinstallprompt', event => {
+      event.preventDefault();
+      deferredPrompt = event;
+      if (!isStandalone() && localStorage.getItem('turiaInstallDismissed') !== '1') {
+        installHelp.textContent = 'Instálala como una app en tu móvil.';
+        installButton.style.display = 'inline-block';
+        installCard.style.display = 'flex';
+      }
+    });
+
+    installButton.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      installCard.style.display = 'none';
+    });
+
+    dismissInstall.addEventListener('click', () => {
+      localStorage.setItem('turiaInstallDismissed', '1');
+      installCard.style.display = 'none';
+    });
+
+    window.addEventListener('appinstalled', () => {
+      installCard.style.display = 'none';
+    });
+
+    // En iPhone/iPad no existe beforeinstallprompt. Mostramos una ayuda breve.
+    if (isIOS() && !isStandalone() && localStorage.getItem('turiaInstallDismissed') !== '1') {
+      installHelp.textContent = 'Safari: Compartir → Añadir a pantalla de inicio.';
+      installButton.style.display = 'none';
+      installCard.style.display = 'flex';
+    }
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
