@@ -41,3 +41,6 @@ El lanzador usa un iframe `credentialless` en Chrome para que las cookies de var
 
 ## v3
 La PWA añade un parámetro anti-caché al iframe de Apps Script, de modo que al abrirla carga la última versión publicada del deployment `/exec`.
+
+## v4
+Fuerza la renovación de la caché de la PWA para cargar la interfaz de Apps Script más reciente.
