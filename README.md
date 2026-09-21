@@ -44,3 +44,8 @@ La PWA añade un parámetro anti-caché al iframe de Apps Script, de modo que al
 
 ## v4
 Fuerza la renovación de la caché de la PWA para cargar la interfaz de Apps Script más reciente.
+
+
+## v5
+- Pantalla de carga: TEMPORADA 26/27.
+- Nueva caché de launcher v5 para forzar actualización.

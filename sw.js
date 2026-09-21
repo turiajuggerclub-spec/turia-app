@@ -1,4 +1,4 @@
-const CACHE_NAME = 'turia-jugger-shell-v4';
+const CACHE_NAME = 'turia-jugger-shell-v5';
 const PRECACHE = [
   './manifest.webmanifest',
   './logo.svg',
