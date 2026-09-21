@@ -232,19 +232,20 @@
 
     const appUrl = window.TURIA_APP_URL;
     let deferredPrompt = null;
-    let loaded = false;
-
-    // Fuerza una carga fresca de la implementación activa de Apps Script.
-    // Así los cambios publicados en Apps Script aparecen en la PWA sin
-    // tener que reinstalarla ni editar GitHub cada vez.
-    function appUrlActualizada() {
-      if (!appUrl) return '';
-      const separador = appUrl.includes('?') ? '&' : '?';
-      return appUrl + separador + 'turia_refresh=' + Date.now();
-    }
+    let appReady = false;
+    let fallbackStage = 0;
+    let fallbackTimer = null;
 
     const SESSION_TOKEN_KEY = 'turiaOuterToken';
     const SESSION_MEMBER_KEY = 'turiaOuterMiembro';
+
+    function appUrlActualizada(extraParams) {
+      if (!appUrl) return '';
+      const u = new URL(appUrl);
+      u.searchParams.set('turia_refresh', String(Date.now()));
+      Object.entries(extraParams || {}).forEach(([k, v]) => u.searchParams.set(k, String(v)));
+      return u.toString();
+    }
 
     function isStandalone() {
       return window.matchMedia('(display-mode: standalone)').matches ||
@@ -253,14 +254,6 @@
 
     function isIOS() {
       return /iphone|ipad|ipod/i.test(navigator.userAgent);
-    }
-
-    if (!appUrl || !/^https:\/\//i.test(appUrl)) {
-      errorCard.style.display = 'grid';
-      loader.style.display = 'none';
-    } else {
-      openDirect.href = appUrl;
-      frame.src = appUrlActualizada();
     }
 
     function restaurarSesionEnFrame() {
@@ -274,22 +267,73 @@
       }, '*');
     }
 
-    frame.addEventListener('load', () => {
-      loaded = true;
+    function origenGoogleValido(origen) {
+      try {
+        const host = new URL(origen).hostname;
+        return host === 'script.google.com' || host.endsWith('.googleusercontent.com');
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function mostrarAppLista() {
+      appReady = true;
+      clearTimeout(fallbackTimer);
+      errorCard.style.display = 'none';
       frame.style.visibility = 'visible';
       loader.style.display = 'none';
-
-      // El iframe es credentialless: restauramos el token desde el origen
-      // persistente de GitHub Pages. Repetimos una vez por si Apps Script
-      // todavía está terminando de inicializar su JavaScript.
       restaurarSesionEnFrame();
       setTimeout(restaurarSesionEnFrame, 800);
+    }
+
+    function cargarModo(stage) {
+      appReady = false;
+      fallbackStage = stage;
+      errorCard.style.display = 'none';
+      loader.style.display = 'grid';
+      frame.style.visibility = 'hidden';
+
+      // 0: sin credenciales/cookies de Google.
+      // 1: iframe normal indicando authuser=0 para desambiguar multi-cuenta.
+      // 2: iframe normal sin parámetros de cuenta.
+      if (stage === 0) {
+        frame.setAttribute('credentialless', '');
+        frame.src = appUrlActualizada();
+      } else if (stage === 1) {
+        frame.removeAttribute('credentialless');
+        frame.src = appUrlActualizada({authuser: 0});
+      } else {
+        frame.removeAttribute('credentialless');
+        frame.src = appUrlActualizada();
+      }
+
+      clearTimeout(fallbackTimer);
+      fallbackTimer = setTimeout(() => {
+        if (appReady) return;
+        if (stage < 2) {
+          cargarModo(stage + 1);
+        } else {
+          loader.style.display = 'none';
+          frame.style.visibility = 'hidden';
+          errorCard.style.display = 'grid';
+        }
+      }, stage === 0 ? 4500 : 6000);
+    }
+
+    // El evento load también se dispara cuando Google muestra su página de
+    // error. Por eso NO lo usamos para decidir que la app está lista.
+    frame.addEventListener('load', () => {
+      restaurarSesionEnFrame();
     });
 
     window.addEventListener('message', event => {
-      // Solo aceptamos mensajes de nuestro único iframe de Apps Script.
-      if (event.source !== frame.contentWindow) return;
       const mensaje = event.data || {};
+      if (!origenGoogleValido(event.origin)) return;
+
+      if (mensaje.type === 'TURIA_APP_READY') {
+        mostrarAppLista();
+        return;
+      }
 
       if (mensaje.type === 'TURIA_STORE_SESSION' && mensaje.token) {
         localStorage.setItem(SESSION_TOKEN_KEY, String(mensaje.token));
@@ -302,19 +346,16 @@
       }
     });
 
-    setTimeout(() => {
-      if (!loaded) {
-        loader.style.display = 'none';
-        errorCard.style.display = 'grid';
-      }
-    }, 15000);
+    if (!appUrl || !/^https:\/\//i.test(appUrl)) {
+      errorCard.style.display = 'grid';
+      loader.style.display = 'none';
+    } else {
+      openDirect.href = appUrl;
+      cargarModo(0);
+    }
 
     window.addEventListener('online', () => {
-      if (!loaded && appUrl) {
-        errorCard.style.display = 'none';
-        loader.style.display = 'grid';
-        frame.src = appUrlActualizada();
-      }
+      if (!appReady && appUrl) cargarModo(0);
     });
 
     window.addEventListener('beforeinstallprompt', event => {
