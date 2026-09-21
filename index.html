@@ -194,6 +194,7 @@
 
   <iframe
     id="appFrame"
+    credentialless
     title="Turia Jugger Club"
     allow="geolocation 'none'; camera 'none'; microphone 'none'"
     referrerpolicy="strict-origin-when-cross-origin"
@@ -233,6 +234,9 @@
     let deferredPrompt = null;
     let loaded = false;
 
+    const SESSION_TOKEN_KEY = 'turiaOuterToken';
+    const SESSION_MEMBER_KEY = 'turiaOuterMiembro';
+
     function isStandalone() {
       return window.matchMedia('(display-mode: standalone)').matches ||
         window.navigator.standalone === true;
@@ -250,10 +254,43 @@
       frame.src = appUrl;
     }
 
+    function restaurarSesionEnFrame() {
+      const token = localStorage.getItem(SESSION_TOKEN_KEY) || '';
+      const miembroID = localStorage.getItem(SESSION_MEMBER_KEY) || '';
+      if (!token || !frame.contentWindow) return;
+      frame.contentWindow.postMessage({
+        type: 'TURIA_RESTORE_SESSION',
+        token,
+        miembroID
+      }, '*');
+    }
+
     frame.addEventListener('load', () => {
       loaded = true;
       frame.style.visibility = 'visible';
       loader.style.display = 'none';
+
+      // El iframe es credentialless: restauramos el token desde el origen
+      // persistente de GitHub Pages. Repetimos una vez por si Apps Script
+      // todavía está terminando de inicializar su JavaScript.
+      restaurarSesionEnFrame();
+      setTimeout(restaurarSesionEnFrame, 800);
+    });
+
+    window.addEventListener('message', event => {
+      // Solo aceptamos mensajes de nuestro único iframe de Apps Script.
+      if (event.source !== frame.contentWindow) return;
+      const mensaje = event.data || {};
+
+      if (mensaje.type === 'TURIA_STORE_SESSION' && mensaje.token) {
+        localStorage.setItem(SESSION_TOKEN_KEY, String(mensaje.token));
+        localStorage.setItem(SESSION_MEMBER_KEY, String(mensaje.miembroID || ''));
+      }
+
+      if (mensaje.type === 'TURIA_CLEAR_SESSION') {
+        localStorage.removeItem(SESSION_TOKEN_KEY);
+        localStorage.removeItem(SESSION_MEMBER_KEY);
+      }
     });
 
     setTimeout(() => {

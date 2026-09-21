@@ -1,19 +1,17 @@
-const CACHE_NAME = 'turia-jugger-shell-v1';
-const SHELL = [
-  './',
-  './index.html',
-  './app-config.js',
+const CACHE_NAME = 'turia-jugger-shell-v2';
+const PRECACHE = [
   './manifest.webmanifest',
   './logo.svg',
   './icons/icon-192.png',
   './icons/icon-512.png',
-  './icons/icon-maskable-512.png'
+  './icons/icon-maskable-512.png',
+  './icons/apple-touch-icon.png'
 ];
 
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(SHELL))
+      .then(cache => cache.addAll(PRECACHE))
       .then(() => self.skipWaiting())
   );
 });
@@ -31,9 +29,26 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // Solo cacheamos el shell del propio GitHub Pages.
-  // La aplicacion real de Apps Script sigue siendo online.
+  // Nunca interceptamos Apps Script ni otros orígenes.
   if (url.origin !== self.location.origin) return;
+
+  const esLauncher = event.request.mode === 'navigate' ||
+    url.pathname.endsWith('/index.html') ||
+    url.pathname.endsWith('/app-config.js');
+
+  if (esLauncher) {
+    // Network-first: evita quedarse atrapado en una URL/configuración antigua.
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then(cached => {

@@ -33,3 +33,7 @@ Edita únicamente `app-config.js` y cambia el valor de `window.TURIA_APP_URL` po
 ## Nota
 
 El shell de la PWA puede abrirse sin conexión, pero los datos de torneos y disponibilidad necesitan Internet porque siguen viviendo en Google Sheets y Apps Script.
+
+
+## v2: varias cuentas de Google
+El lanzador usa un iframe `credentialless` en Chrome para que las cookies de varias cuentas Google no interfieran con Apps Script. La sesión de Turia se conserva en el almacenamiento de GitHub Pages y se restaura al abrir la PWA.
