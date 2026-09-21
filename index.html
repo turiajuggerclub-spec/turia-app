@@ -234,6 +234,15 @@
     let deferredPrompt = null;
     let loaded = false;
 
+    // Fuerza una carga fresca de la implementación activa de Apps Script.
+    // Así los cambios publicados en Apps Script aparecen en la PWA sin
+    // tener que reinstalarla ni editar GitHub cada vez.
+    function appUrlActualizada() {
+      if (!appUrl) return '';
+      const separador = appUrl.includes('?') ? '&' : '?';
+      return appUrl + separador + 'turia_refresh=' + Date.now();
+    }
+
     const SESSION_TOKEN_KEY = 'turiaOuterToken';
     const SESSION_MEMBER_KEY = 'turiaOuterMiembro';
 
@@ -251,7 +260,7 @@
       loader.style.display = 'none';
     } else {
       openDirect.href = appUrl;
-      frame.src = appUrl;
+      frame.src = appUrlActualizada();
     }
 
     function restaurarSesionEnFrame() {
@@ -304,7 +313,7 @@
       if (!loaded && appUrl) {
         errorCard.style.display = 'none';
         loader.style.display = 'grid';
-        frame.src = appUrl;
+        frame.src = appUrlActualizada();
       }
     });
 

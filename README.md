@@ -37,3 +37,7 @@ El shell de la PWA puede abrirse sin conexión, pero los datos de torneos y disp
 
 ## v2: varias cuentas de Google
 El lanzador usa un iframe `credentialless` en Chrome para que las cookies de varias cuentas Google no interfieran con Apps Script. La sesión de Turia se conserva en el almacenamiento de GitHub Pages y se restaura al abrir la PWA.
+
+
+## v3
+La PWA añade un parámetro anti-caché al iframe de Apps Script, de modo que al abrirla carga la última versión publicada del deployment `/exec`.
