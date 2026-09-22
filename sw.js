@@ -1,77 +1,38 @@
-importScripts('./firebase-config.js');
-importScripts('https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/12.19.0/firebase-messaging-compat.js');
+// sw.js - Añadir al inicio del archivo
 
-try {
-  const cfg = self.TURIA_FIREBASE_CONFIG || {};
-  if (cfg.apiKey && cfg.projectId && cfg.messagingSenderId && cfg.appId) {
-    firebase.initializeApp(cfg);
-    firebase.messaging();
-  }
-} catch (e) {
-  console.warn('Firebase Messaging no inicializado:', e);
-}
+// 1. Importar los scripts de compatibilidad de Firebase
+importScripts('https://gstatic.com');
+importScripts('https://gstatic.com');
 
-const CACHE_NAME = 'turia-jugger-shell-v5-18';
-const PRECACHE = [
-  './manifest.webmanifest',
-  './logo.svg',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './icons/icon-maskable-512.png',
-  './icons/apple-touch-icon.png'
-];
-
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(PRECACHE))
-      .then(() => self.skipWaiting())
-  );
+// 2. Inicializar Firebase dentro del Service Worker
+firebase.initializeApp({
+  apiKey: "AIzaSyAsU2pCBgfyM_W7zVQPYkWixp40k_E5u6w",
+  authDomain: "://firebaseapp.com",
+  projectId: "turia-3519f",
+  storageBucket: "turia-3519f.firebasestorage.app",
+  messagingSenderId: "257867676656",
+  appId: "1:257867676656:web:682be9768e12b5bbbdfb35"
 });
 
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys()
-      .then(keys => Promise.all(
-        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
-      ))
-      .then(() => self.clients.claim())
-  );
+// 3. Inicializar el motor de mensajería en segundo plano
+const messaging = firebase.messaging();
+
+// 4. Capturar y gestionar la visualización de la alerta push en segundo plano
+messaging.onBackgroundMessage((payload) => {
+  console.log('[sw.js] Notificación en segundo plano recibida: ', payload);
+
+  const notificationTitle = payload.notification.title || "Aviso Turia Jugger Club";
+  const notificationOptions = {
+    body: payload.notification.body || "Tienes una nueva actualización.",
+    icon: payload.notification.icon || './icons/icon-192x192.png', // Ajusta la ruta a tus iconos si varía
+    badge: './icons/icon-72x72.png',
+    data: payload.data // Permite enviar datos extra (como el ID de un torneo)
+  };
+
+  self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-
-  // Nunca interceptamos Apps Script ni otros orígenes.
-  if (url.origin !== self.location.origin) return;
-
-  const esLauncher = event.request.mode === 'navigate' ||
-    url.pathname.endsWith('/index.html') ||
-    url.pathname.endsWith('/app-config.js');
-
-  if (esLauncher) {
-    // Network-first: evita quedarse atrapado en una URL/configuración antigua.
-    event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-          return response;
-        })
-        .catch(() => caches.match(event.request))
-    );
-    return;
-  }
-
-  event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-      return fetch(event.request).then(response => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-        return response;
-      });
-    })
-  );
-});
+// ==========================================
+// TU CÓDIGO PREVIO DE CACHÉ PWA COMIENZA AQUÍ
+// ==========================================
+// self.addEventListener('install', ... )
