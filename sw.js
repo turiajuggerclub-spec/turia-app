@@ -1,110 +1,125 @@
-// github/sw.js - AÑADIR EN LA LÍNEA 1
+/*
+ * Turia Jugger Club - Service Worker
+ * PWA + Firebase Cloud Messaging
+ */
 
-// 1. Importar librerías de compatibilidad del CDN de Google Firebase
-importScripts('https://gstatic.com');
-importScripts('https://gstatic.com');
+/* =========================================================
+   CONFIGURACIÓN DE FIREBASE PARA EL SERVICE WORKER
+   ========================================================= */
 
-// 2. Inicializar el entorno nativo
-firebase.initializeApp({
+importScripts(
+  "https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"
+);
+
+importScripts(
+  "https://www.gstatic.com/firebasejs/12.19.0/firebase-messaging-compat.js"
+);
+
+const FIREBASE_CONFIG = {
   apiKey: "AIzaSyAsU2pCBgfyM_W7zVQPYkWixp40k_E5u6w",
-  authDomain: "://firebaseapp.com",
+  authDomain: "turia-3519f.firebaseapp.com",
   projectId: "turia-3519f",
   storageBucket: "turia-3519f.firebasestorage.app",
   messagingSenderId: "257867676656",
   appId: "1:257867676656:web:682be9768e12b5bbbdfb35"
-});
+};
 
-// 3. Inicializar el interceptor de mensajería en segundo plano
-const messaging = firebase.messaging();
+let firebaseMessagingReady = false;
 
-messaging.onBackgroundMessage((payload) => {
-  console.log('[sw.js] Alerta push recibida en segundo plano: ', payload);
+try {
+  firebase.initializeApp(FIREBASE_CONFIG);
 
-  const title = payload.notification?.title || "Turia Jugger Club";
-  const options = {
-    body: payload.notification?.body || "Tienes una actualización del equipo.",
-    icon: './icons/icon-192.png', // Usa tus iconos declarados en el repositorio
-    badge: './icons/icon-192.png',
-    data: payload.data
-  };
+  const messaging = firebase.messaging();
 
-  self.registration.showNotification(title, options);
-});
+  firebaseMessagingReady = true;
 
-// ===================================================
-// TU CÓDIGO ACTUAL DE CACHÉ PWA CONTINÚA DEBAJO AQUÍ
-// ===================================================
-// github/sw.js - AÑADIR EN LA LÍNEA 1
+  /*
+   * Notificaciones recibidas cuando la aplicación está cerrada
+   * o en segundo plano.
+   */
+  messaging.onBackgroundMessage(payload => {
+    console.log(
+      "[Turia SW] Notificación recibida en segundo plano:",
+      payload
+    );
 
-// 1. Importar librerías de compatibilidad del CDN de Google Firebase
-importScripts('https://gstatic.com');
-importScripts('https://gstatic.com');
+    const notification = payload.notification || {};
+    const data = payload.data || {};
 
-// 2. Inicializar el entorno nativo
-firebase.initializeApp({
-  apiKey: "AIzaSyAsU2pCBgfyM_W7zVQPYkWixp40k_E5u6w",
-  authDomain: "://firebaseapp.com",
-  projectId: "turia-3519f",
-  storageBucket: "turia-3519f.firebasestorage.app",
-  messagingSenderId: "257867676656",
-  appId: "1:257867676656:web:682be9768e12b5bbbdfb35"
-});
+    const title =
+      notification.title ||
+      data.title ||
+      "Turia Jugger Club";
 
-// 3. Inicializar el interceptor de mensajería en segundo plano
-const messaging = firebase.messaging();
+    const options = {
+      body:
+        notification.body ||
+        data.body ||
+        "Tienes una nueva notificación.",
 
-messaging.onBackgroundMessage((payload) => {
-  console.log('[sw.js] Alerta push recibida en segundo plano: ', payload);
+      icon: "./icons/icon-192.png",
+      badge: "./icons/icon-192.png",
 
-  const title = payload.notification?.title || "Turia Jugger Club";
-  const options = {
-    body: payload.notification?.body || "Tienes una actualización del equipo.",
-    icon: './icons/icon-192.png', // Usa tus iconos declarados en el repositorio
-    badge: './icons/icon-192.png',
-    data: payload.data
-  };
+      image: notification.image || undefined,
 
-  self.registration.showNotification(title, options);
-});
+      data: {
+        ...data,
+        url: data.url || "./index.html"
+      },
 
-// ===================================================
-// TU CÓDIGO ACTUAL DE CACHÉ PWA CONTINÚA DEBAJO AQUÍ
-// ===================================================
-// sw.js - Añadir al inicio del archivo
+      tag:
+        data.tag ||
+        "turia-jugger-notification",
 
-// 1. Importar los scripts de compatibilidad de Firebase
-importScripts('https://gstatic.com');
-importScripts('https://gstatic.com');
+      renotify: true,
 
-// 2. Inicializar Firebase dentro del Service Worker
-firebase.initializeApp({
-  apiKey: "AIzaSyAsU2pCBgfyM_W7zVQPYkWixp40k_E5u6w",
-  authDomain: "://firebaseapp.com",
-  projectId: "turia-3519f",
-  storageBucket: "turia-3519f.firebasestorage.app",
-  messagingSenderId: "257867676656",
-  appId: "1:257867676656:web:682be9768e12b5bbbdfb35"
-});
+      actions: [
+        {
+          action: "open",
+          title: "Abrir aplicación"
+        }
+      ]
+    };
 
-// 3. Inicializar el motor de mensajería en segundo plano
-const messaging = firebase.messaging();
+    return self.registration.showNotification(title, options);
+  });
 
-// 4. Capturar y gestionar la visualización de la alerta push en segundo plano
-messaging.onBackgroundMessage((payload) => {
-  console.log('[sw.js] Notificación en segundo plano recibida: ', payload);
+} catch (error) {
+  console.warn(
+    "[Turia SW] Firebase Messaging no se pudo inicializar:",
+    error
+  );
+}
 
-  const notificationTitle = payload.notification.title || "Aviso Turia Jugger Club";
-  const notificationOptions = {
-    body: payload.notification.body || "Tienes una nueva actualización.",
-    icon: payload.notification.icon || './icons/icon-192x192.png', // Ajusta la ruta a tus iconos si varía
-    badge: './icons/icon-72x72.png',
-    data: payload.data // Permite enviar datos extra (como el ID de un torneo)
-  };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
-});
+/* =========================================================
+   CACHE DE LA PWA
+   ========================================================= */
 
-// ==========================================
-// TU CÓDIGO PREVIO DE CACHÉ PWA COMIENZA AQUÍ
-// ==========================================
-// self.addEventListener('install', ... )
+const CACHE_NAME = "turia-jugger-shell-v6";
+
+const PRECACHE = [
+  "./",
+  "./index.html",
+  "./manifest.webmanifest",
+  "./app-config.js",
+  "./logo.svg",
+
+  "./icons/icon-192.png",
+  "./icons/icon-512.png",
+  "./icons/icon-maskable-512.png",
+  "./icons/apple-touch-icon.png"
+];
+
+
+/* =========================================================
+   INSTALACIÓN
+   ========================================================= */
+
+self.addEventListener("install", event => {
+  event.waitUntil(
+    caches
+      .open(CACHE_NAME)
+      .then(async cache => {
+        /*
+         *
