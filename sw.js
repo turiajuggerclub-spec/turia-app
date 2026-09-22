@@ -158,7 +158,7 @@ try {
    */
 
 const CACHE_NAME =
-  "turia-jugger-shell-v5-20";
+  "turia-jugger-shell-v5-21";
 
 
 /*
