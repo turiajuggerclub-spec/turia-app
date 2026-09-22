@@ -399,77 +399,288 @@
     }
   </script>
 
-  <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
-    import { getMessaging, isSupported, onRegistered, onUnregistered, register, unregister, onMessage } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-messaging.js';
+ <script type="module">
+  import {
+    initializeApp,
+    getApps,
+    getApp
+  } from
+    'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 
-    const cfg = globalThis.TURIA_FIREBASE_CONFIG || {};
-    const vapidKey = globalThis.TURIA_FIREBASE_VAPID_KEY || '';
-    let messaging = null;
-    let swReg = null;
-    let ultimoFid = localStorage.getItem('turiaNotificationFid') || '';
-    let firebaseListo = false;
+  import {
+    getMessaging,
+    getToken,
+    deleteToken,
+    isSupported,
+    onMessage
+  } from
+    'https://www.gstatic.com/firebasejs/12.19.0/firebase-messaging.js';
 
-    function enviarAlFrame(payload){
-      const f=document.getElementById('appFrame');
-      if(f&&f.contentWindow)f.contentWindow.postMessage(payload,'*');
+  const FIREBASE_CONFIG = {
+    apiKey:
+      "AIzaSyAsU2pCBgfyM_W7zVQPYkWixp40k_E5u6w",
+
+    authDomain:
+      "turia-3519f.firebaseapp.com",
+
+    projectId:
+      "turia-3519f",
+
+    storageBucket:
+      "turia-3519f.firebasestorage.app",
+
+    messagingSenderId:
+      "257867676656",
+
+    appId:
+      "1:257867676656:web:682be9768e12b5bbbdfb35"
+  };
+
+  const VAPID_KEY =
+    "BOlZ_aJbMA_oUQ7R4wG5XrpKwQVJ0h2n2cIiEcvesbQx56AYRlmEPEuuD18Ol1teMbbpVL9p1BtfFkpmT24BJM";
+
+  let appFirebase = null;
+  let messagingFirebase = null;
+  let serviceWorkerRegistration = null;
+  let firebasePreparado = false;
+
+  let ultimoToken =
+    localStorage.getItem(
+      'turiaNotificationFid'
+    ) || '';
+
+  function enviarAlFrame(payload) {
+    const frame =
+      document.getElementById('appFrame');
+
+    if (
+      frame &&
+      frame.contentWindow
+    ) {
+      frame.contentWindow.postMessage(
+        payload,
+        '*'
+      );
     }
-    function configCompleta(){return !!(cfg.apiKey&&cfg.projectId&&cfg.messagingSenderId&&cfg.appId&&vapidKey);}
-    async function prepararFirebase(){
-      if(firebaseListo)return true;
-      if(!configCompleta())throw new Error('Falta completar firebase-config.js en GitHub.');
-      if(!(await isSupported()))throw new Error('Este navegador no admite Firebase Cloud Messaging.');
-      swReg=await navigator.serviceWorker.register('./sw.js');
+  }
+
+  async function prepararFirebase() {
+    if (firebasePreparado) {
+      return messagingFirebase;
+    }
+
+    if (
+      !('serviceWorker' in navigator)
+    ) {
+      throw new Error(
+        'Este navegador no admite Service Workers.'
+      );
+    }
+
+    if (
+      !('Notification' in window)
+    ) {
+      throw new Error(
+        'Este navegador no admite notificaciones.'
+      );
+    }
+
+    const compatible =
+      await isSupported();
+
+    if (!compatible) {
+      throw new Error(
+        'Firebase Cloud Messaging no está disponible en este navegador.'
+      );
+    }
+
+    serviceWorkerRegistration =
       await navigator.serviceWorker.ready;
-      const app=initializeApp(cfg);
-      messaging=getMessaging(app);
-      onRegistered(messaging,(fid)=>{
-        ultimoFid=String(fid||'');
-        if(ultimoFid)localStorage.setItem('turiaNotificationFid',ultimoFid);
-        enviarAlFrame({type:'TURIA_NOTIFICATION_FID',fid:ultimoFid,permission:Notification.permission});
-      });
-      onUnregistered(messaging,(fid)=>{
-        const viejo=String(fid||ultimoFid||'');
-        localStorage.removeItem('turiaNotificationFid');ultimoFid='';
-        enviarAlFrame({type:'TURIA_NOTIFICATION_DISABLED',fid:viejo});
-      });
-      onMessage(messaging,(payload)=>{
-        const n=(payload&&payload.notification)||{};
-        if(n.title&&Notification.permission==='granted'){
-          new Notification(n.title,{body:n.body||'',icon:'./icons/icon-192.png'});
-        }
-      });
-      firebaseListo=true;
-      return true;
+
+    if (getApps().length) {
+      appFirebase = getApp();
+    } else {
+      appFirebase =
+        initializeApp(FIREBASE_CONFIG);
     }
 
-    window.addEventListener('message',async(event)=>{
-      const m=event.data||{};
-      if(!['TURIA_NOTIFICATION_STATUS','TURIA_ENABLE_NOTIFICATIONS','TURIA_DISABLE_NOTIFICATIONS'].includes(m.type))return;
-      try{
-        if(m.type==='TURIA_NOTIFICATION_STATUS'){
-          let supported=false;
-          try{supported=await isSupported();}catch(_){supported=false;}
-          enviarAlFrame({type:'TURIA_NOTIFICATION_STATUS_RESULT',supported,permission:('Notification'in window?Notification.permission:'unsupported'),fid:ultimoFid});
+    messagingFirebase =
+      getMessaging(appFirebase);
+
+    onMessage(
+      messagingFirebase,
+      payload => {
+        const notification =
+          payload.notification || {};
+
+        const title =
+          notification.title ||
+          'Turia Jugger Club';
+
+        const body =
+          notification.body || '';
+
+        if (
+          Notification.permission ===
+          'granted'
+        ) {
+          new Notification(
+            title,
+            {
+              body,
+              icon:
+                './icons/icon-192.png'
+            }
+          );
+        }
+      }
+    );
+
+    firebasePreparado = true;
+
+    return messagingFirebase;
+  }
+
+  window.addEventListener(
+    'message',
+    async event => {
+      const mensaje =
+        event.data || {};
+
+      const tiposAdmitidos = [
+        'TURIA_NOTIFICATION_STATUS',
+        'TURIA_ENABLE_NOTIFICATIONS',
+        'TURIA_DISABLE_NOTIFICATIONS'
+      ];
+
+      if (
+        !tiposAdmitidos.includes(
+          mensaje.type
+        )
+      ) {
+        return;
+      }
+
+      try {
+        if (
+          mensaje.type ===
+          'TURIA_NOTIFICATION_STATUS'
+        ) {
+          let supported = false;
+
+          try {
+            supported =
+              await isSupported();
+          } catch (error) {
+            supported = false;
+          }
+
+          enviarAlFrame({
+            type:
+              'TURIA_NOTIFICATION_STATUS_RESULT',
+
+            supported,
+
+            permission:
+              'Notification' in window
+                ? Notification.permission
+                : 'unsupported',
+
+            fid: ultimoToken
+          });
+
           return;
         }
-        if(m.type==='TURIA_ENABLE_NOTIFICATIONS'){
-          if(!('Notification'in window))throw new Error('Este navegador no admite notificaciones.');
-          const permiso=await Notification.requestPermission();
-          if(permiso!=='granted')throw new Error(permiso==='denied'?'Has bloqueado las notificaciones en el navegador.':'No se concedió permiso para notificaciones.');
-          await prepararFirebase();
-          await register(messaging,{vapidKey,serviceWorkerRegistration:swReg});
+
+        if (
+          mensaje.type ===
+          'TURIA_ENABLE_NOTIFICATIONS'
+        ) {
+          const permiso =
+            await Notification.requestPermission();
+
+          if (permiso !== 'granted') {
+            throw new Error(
+              permiso === 'denied'
+                ? 'Has bloqueado las notificaciones en el navegador.'
+                : 'No se concedió permiso para notificaciones.'
+            );
+          }
+
+          const messaging =
+            await prepararFirebase();
+
+          const token =
+            await getToken(
+              messaging,
+              {
+                vapidKey: VAPID_KEY,
+                serviceWorkerRegistration
+              }
+            );
+
+          if (!token) {
+            throw new Error(
+              'Firebase no devolvió ningún token.'
+            );
+          }
+
+          ultimoToken = token;
+
+          localStorage.setItem(
+            'turiaNotificationFid',
+            token
+          );
+
+          enviarAlFrame({
+            type:
+              'TURIA_NOTIFICATION_FID',
+            fid: token,
+            permission: permiso
+          });
+
           return;
         }
-        if(m.type==='TURIA_DISABLE_NOTIFICATIONS'){
-          const viejo=ultimoFid;
-          await prepararFirebase();
-          await unregister(messaging);
-          // Si el SDK no dispara onUnregistered por alguna razón, mantenemos el backend sincronizado.
-          setTimeout(()=>{if(viejo&&ultimoFid===viejo){localStorage.removeItem('turiaNotificationFid');ultimoFid='';enviarAlFrame({type:'TURIA_NOTIFICATION_DISABLED',fid:viejo});}},400);
+
+        if (
+          mensaje.type ===
+          'TURIA_DISABLE_NOTIFICATIONS'
+        ) {
+          const messaging =
+            await prepararFirebase();
+
+          await deleteToken(messaging);
+
+          const tokenAnterior =
+            ultimoToken;
+
+          ultimoToken = '';
+
+          localStorage.removeItem(
+            'turiaNotificationFid'
+          );
+
+          enviarAlFrame({
+            type:
+              'TURIA_NOTIFICATION_DISABLED',
+            fid: tokenAnterior
+          });
         }
-      }catch(e){enviarAlFrame({type:'TURIA_NOTIFICATION_ERROR',message:e&&e.message?e.message:String(e)});}
-    });
-  </script>
+
+      } catch (error) {
+        enviarAlFrame({
+          type:
+            'TURIA_NOTIFICATION_ERROR',
+
+          message:
+            error &&
+            error.message
+              ? error.message
+              : String(error)
+        });
+      }
+    }
+  );
+</script>
 </body>
 </html>
