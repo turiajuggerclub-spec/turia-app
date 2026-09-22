@@ -1,3 +1,75 @@
+// github/sw.js - AÑADIR EN LA LÍNEA 1
+
+// 1. Importar librerías de compatibilidad del CDN de Google Firebase
+importScripts('https://gstatic.com');
+importScripts('https://gstatic.com');
+
+// 2. Inicializar el entorno nativo
+firebase.initializeApp({
+  apiKey: "AIzaSyAsU2pCBgfyM_W7zVQPYkWixp40k_E5u6w",
+  authDomain: "://firebaseapp.com",
+  projectId: "turia-3519f",
+  storageBucket: "turia-3519f.firebasestorage.app",
+  messagingSenderId: "257867676656",
+  appId: "1:257867676656:web:682be9768e12b5bbbdfb35"
+});
+
+// 3. Inicializar el interceptor de mensajería en segundo plano
+const messaging = firebase.messaging();
+
+messaging.onBackgroundMessage((payload) => {
+  console.log('[sw.js] Alerta push recibida en segundo plano: ', payload);
+
+  const title = payload.notification?.title || "Turia Jugger Club";
+  const options = {
+    body: payload.notification?.body || "Tienes una actualización del equipo.",
+    icon: './icons/icon-192.png', // Usa tus iconos declarados en el repositorio
+    badge: './icons/icon-192.png',
+    data: payload.data
+  };
+
+  self.registration.showNotification(title, options);
+});
+
+// ===================================================
+// TU CÓDIGO ACTUAL DE CACHÉ PWA CONTINÚA DEBAJO AQUÍ
+// ===================================================
+// github/sw.js - AÑADIR EN LA LÍNEA 1
+
+// 1. Importar librerías de compatibilidad del CDN de Google Firebase
+importScripts('https://gstatic.com');
+importScripts('https://gstatic.com');
+
+// 2. Inicializar el entorno nativo
+firebase.initializeApp({
+  apiKey: "AIzaSyAsU2pCBgfyM_W7zVQPYkWixp40k_E5u6w",
+  authDomain: "://firebaseapp.com",
+  projectId: "turia-3519f",
+  storageBucket: "turia-3519f.firebasestorage.app",
+  messagingSenderId: "257867676656",
+  appId: "1:257867676656:web:682be9768e12b5bbbdfb35"
+});
+
+// 3. Inicializar el interceptor de mensajería en segundo plano
+const messaging = firebase.messaging();
+
+messaging.onBackgroundMessage((payload) => {
+  console.log('[sw.js] Alerta push recibida en segundo plano: ', payload);
+
+  const title = payload.notification?.title || "Turia Jugger Club";
+  const options = {
+    body: payload.notification?.body || "Tienes una actualización del equipo.",
+    icon: './icons/icon-192.png', // Usa tus iconos declarados en el repositorio
+    badge: './icons/icon-192.png',
+    data: payload.data
+  };
+
+  self.registration.showNotification(title, options);
+});
+
+// ===================================================
+// TU CÓDIGO ACTUAL DE CACHÉ PWA CONTINÚA DEBAJO AQUÍ
+// ===================================================
 // sw.js - Añadir al inicio del archivo
 
 // 1. Importar los scripts de compatibilidad de Firebase
