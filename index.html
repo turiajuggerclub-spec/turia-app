@@ -398,5 +398,78 @@
       });
     }
   </script>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+    import { getMessaging, isSupported, onRegistered, onUnregistered, register, unregister, onMessage } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-messaging.js';
+
+    const cfg = globalThis.TURIA_FIREBASE_CONFIG || {};
+    const vapidKey = globalThis.TURIA_FIREBASE_VAPID_KEY || '';
+    let messaging = null;
+    let swReg = null;
+    let ultimoFid = localStorage.getItem('turiaNotificationFid') || '';
+    let firebaseListo = false;
+
+    function enviarAlFrame(payload){
+      const f=document.getElementById('appFrame');
+      if(f&&f.contentWindow)f.contentWindow.postMessage(payload,'*');
+    }
+    function configCompleta(){return !!(cfg.apiKey&&cfg.projectId&&cfg.messagingSenderId&&cfg.appId&&vapidKey);}
+    async function prepararFirebase(){
+      if(firebaseListo)return true;
+      if(!configCompleta())throw new Error('Falta completar firebase-config.js en GitHub.');
+      if(!(await isSupported()))throw new Error('Este navegador no admite Firebase Cloud Messaging.');
+      swReg=await navigator.serviceWorker.register('./sw.js');
+      await navigator.serviceWorker.ready;
+      const app=initializeApp(cfg);
+      messaging=getMessaging(app);
+      onRegistered(messaging,(fid)=>{
+        ultimoFid=String(fid||'');
+        if(ultimoFid)localStorage.setItem('turiaNotificationFid',ultimoFid);
+        enviarAlFrame({type:'TURIA_NOTIFICATION_FID',fid:ultimoFid,permission:Notification.permission});
+      });
+      onUnregistered(messaging,(fid)=>{
+        const viejo=String(fid||ultimoFid||'');
+        localStorage.removeItem('turiaNotificationFid');ultimoFid='';
+        enviarAlFrame({type:'TURIA_NOTIFICATION_DISABLED',fid:viejo});
+      });
+      onMessage(messaging,(payload)=>{
+        const n=(payload&&payload.notification)||{};
+        if(n.title&&Notification.permission==='granted'){
+          new Notification(n.title,{body:n.body||'',icon:'./icons/icon-192.png'});
+        }
+      });
+      firebaseListo=true;
+      return true;
+    }
+
+    window.addEventListener('message',async(event)=>{
+      const m=event.data||{};
+      if(!['TURIA_NOTIFICATION_STATUS','TURIA_ENABLE_NOTIFICATIONS','TURIA_DISABLE_NOTIFICATIONS'].includes(m.type))return;
+      try{
+        if(m.type==='TURIA_NOTIFICATION_STATUS'){
+          let supported=false;
+          try{supported=await isSupported();}catch(_){supported=false;}
+          enviarAlFrame({type:'TURIA_NOTIFICATION_STATUS_RESULT',supported,permission:('Notification'in window?Notification.permission:'unsupported'),fid:ultimoFid});
+          return;
+        }
+        if(m.type==='TURIA_ENABLE_NOTIFICATIONS'){
+          if(!('Notification'in window))throw new Error('Este navegador no admite notificaciones.');
+          const permiso=await Notification.requestPermission();
+          if(permiso!=='granted')throw new Error(permiso==='denied'?'Has bloqueado las notificaciones en el navegador.':'No se concedió permiso para notificaciones.');
+          await prepararFirebase();
+          await register(messaging,{vapidKey,serviceWorkerRegistration:swReg});
+          return;
+        }
+        if(m.type==='TURIA_DISABLE_NOTIFICATIONS'){
+          const viejo=ultimoFid;
+          await prepararFirebase();
+          await unregister(messaging);
+          // Si el SDK no dispara onUnregistered por alguna razón, mantenemos el backend sincronizado.
+          setTimeout(()=>{if(viejo&&ultimoFid===viejo){localStorage.removeItem('turiaNotificationFid');ultimoFid='';enviarAlFrame({type:'TURIA_NOTIFICATION_DISABLED',fid:viejo});}},400);
+        }
+      }catch(e){enviarAlFrame({type:'TURIA_NOTIFICATION_ERROR',message:e&&e.message?e.message:String(e)});}
+    });
+  </script>
 </body>
 </html>

@@ -1,4 +1,18 @@
-const CACHE_NAME = 'turia-jugger-shell-v5-2';
+importScripts('./firebase-config.js');
+importScripts('https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/12.19.0/firebase-messaging-compat.js');
+
+try {
+  const cfg = self.TURIA_FIREBASE_CONFIG || {};
+  if (cfg.apiKey && cfg.projectId && cfg.messagingSenderId && cfg.appId) {
+    firebase.initializeApp(cfg);
+    firebase.messaging();
+  }
+} catch (e) {
+  console.warn('Firebase Messaging no inicializado:', e);
+}
+
+const CACHE_NAME = 'turia-jugger-shell-v5-18';
 const PRECACHE = [
   './manifest.webmanifest',
   './logo.svg',
