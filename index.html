@@ -358,38 +358,72 @@
       if (!appReady && appUrl) cargarModo(0);
     });
 
+    // Cerrar el aviso ya no lo oculta para siempre. Se respeta una pausa de 7 días.
+    const INSTALL_DISMISSED_UNTIL_KEY = 'turiaInstallDismissedUntil';
+    // Compatibilidad: elimina la antigua marca permanente que impedía volver a instalar.
+    try { localStorage.removeItem('turiaInstallDismissed'); } catch (_) {}
+
+    function instalacionPospuesta() {
+      const hasta = Number(localStorage.getItem(INSTALL_DISMISSED_UNTIL_KEY) || 0);
+      return hasta > Date.now();
+    }
+
+    function mostrarAyudaInstalacion() {
+      if (isStandalone() || instalacionPospuesta()) return;
+      installHelp.textContent = 'En Chrome: abre ⋮ y elige «Instalar aplicación» o «Añadir a pantalla de inicio».';
+      installButton.style.display = 'none';
+      installCard.style.display = 'flex';
+    }
+
     window.addEventListener('beforeinstallprompt', event => {
       event.preventDefault();
       deferredPrompt = event;
-      if (!isStandalone() && localStorage.getItem('turiaInstallDismissed') !== '1') {
+      if (!isStandalone() && !instalacionPospuesta()) {
         installHelp.textContent = 'Instálala como una app en tu móvil.';
+        installButton.textContent = 'Instalar';
         installButton.style.display = 'inline-block';
         installCard.style.display = 'flex';
       }
     });
 
     installButton.addEventListener('click', async () => {
-      if (!deferredPrompt) return;
+      if (!deferredPrompt) {
+        mostrarAyudaInstalacion();
+        return;
+      }
       deferredPrompt.prompt();
-      await deferredPrompt.userChoice;
+      const eleccion = await deferredPrompt.userChoice;
       deferredPrompt = null;
-      installCard.style.display = 'none';
+      if (eleccion && eleccion.outcome === 'accepted') {
+        installCard.style.display = 'none';
+      } else {
+        // Chrome puede no volver a ofrecer el prompt inmediatamente; damos la ruta manual.
+        mostrarAyudaInstalacion();
+      }
     });
 
     dismissInstall.addEventListener('click', () => {
-      localStorage.setItem('turiaInstallDismissed', '1');
+      localStorage.setItem(INSTALL_DISMISSED_UNTIL_KEY, String(Date.now() + 7 * 24 * 60 * 60 * 1000));
       installCard.style.display = 'none';
     });
 
     window.addEventListener('appinstalled', () => {
       installCard.style.display = 'none';
+      localStorage.removeItem(INSTALL_DISMISSED_UNTIL_KEY);
     });
 
-    // En iPhone/iPad no existe beforeinstallprompt. Mostramos una ayuda breve.
-    if (isIOS() && !isStandalone() && localStorage.getItem('turiaInstallDismissed') !== '1') {
+    // En Android Chrome puede no emitirse beforeinstallprompt si el usuario
+    // ya cerró el diálogo. Ofrecemos instrucciones manuales como alternativa.
+    if (isIOS() && !isStandalone() && !instalacionPospuesta()) {
       installHelp.textContent = 'Safari: Compartir → Añadir a pantalla de inicio.';
       installButton.style.display = 'none';
       installCard.style.display = 'flex';
+    } else if (!isStandalone() && !instalacionPospuesta()) {
+      window.setTimeout(() => {
+        if (!deferredPrompt && installCard.style.display !== 'flex') {
+          mostrarAyudaInstalacion();
+        }
+      }, 2200);
     }
 
     if ('serviceWorker' in navigator) {
@@ -567,28 +601,47 @@
           'TURIA_NOTIFICATION_STATUS'
         ) {
           let supported = false;
-
           try {
-            supported =
-              await isSupported();
+            supported = await isSupported();
           } catch (error) {
             supported = false;
           }
 
+          const permission =
+            'Notification' in window
+              ? Notification.permission
+              : 'unsupported';
+
+          // Primero comunicamos el soporte y el permiso, para que Apps Script
+          // no confunda un error de token con un navegador incompatible.
           enviarAlFrame({
-            type:
-              'TURIA_NOTIFICATION_STATUS_RESULT',
-
-            supported,
-
-            permission:
-              'Notification' in window
-                ? Notification.permission
-                : 'unsupported',
-
-            fid: ultimoToken
+            type: 'TURIA_NOTIFICATION_STATUS_RESULT',
+            supported: supported,
+            permission: permission,
+            fid: ''
           });
 
+          // No confiamos únicamente en el token antiguo de localStorage.
+          // Si Chrome ya concedió permiso, renovamos/recuperamos el token real
+          // y pedimos a Apps Script que confirme su registro en Firestore.
+          if (supported && permission === 'granted') {
+            const messaging = await prepararFirebase();
+            const tokenActual = await getToken(messaging, {
+              vapidKey: VAPID_KEY,
+              serviceWorkerRegistration
+            });
+
+            if (tokenActual) {
+              ultimoToken = tokenActual;
+              localStorage.setItem('turiaNotificationFid', tokenActual);
+              enviarAlFrame({
+                type: 'TURIA_NOTIFICATION_FID',
+                fid: tokenActual,
+                permission: permission,
+                source: 'status'
+              });
+            }
+          }
           return;
         }
 
